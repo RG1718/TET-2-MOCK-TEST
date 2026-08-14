@@ -374,7 +374,7 @@ input[type=text],input[type=tel],input[type=password]{
     </div>
     <div id="passwordFieldWrap" class="login-field-wrap">
       <label class="field">પાસવર્ડ</label>
-      <input id="passwordInput" type="password" placeholder="પાસવર્ડ દાખલ કરો">
+      <input id="passwordInput" type="text" placeholder="પાસવર્ડ દાખલ કરો">
       <div id="passwordError" class="inline-error"></div>
     </div>
     <div class="login-actions">
@@ -474,7 +474,166 @@ input[type=text],input[type=tel],input[type=password]{
   </div>
 </div>
 
+
+<style>
+#rgExitModal{
+  display:none;position:fixed;inset:0;z-index:99999;
+  background:rgba(0,0,0,.72);align-items:center;justify-content:center;
+  padding:18px;font-family:Arial,"Noto Sans Gujarati",sans-serif;
+}
+#rgExitModal.show{display:flex}
+.rg-exit-card{
+  width:min(100%,390px);background:#fff;border-radius:20px;padding:22px 18px;
+  box-shadow:0 18px 55px rgba(0,0,0,.35);text-align:center;
+  border:2px solid #dbe4ef;
+}
+.rg-exit-icon{font-size:42px;line-height:1;margin-bottom:9px}
+.rg-exit-title{font-size:21px;font-weight:900;color:#08245f;margin-bottom:8px}
+.rg-exit-text{font-size:15px;line-height:1.55;color:#374151;font-weight:700;margin-bottom:18px}
+.rg-exit-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rg-exit-btn{
+  border:0;border-radius:12px;min-height:54px;padding:12px 10px;
+  font-size:16px;font-weight:900;cursor:pointer;
+}
+.rg-cancel-btn{background:#16a34a;color:#fff;box-shadow:0 5px 14px rgba(22,163,74,.25)}
+.rg-exit-btn-danger{background:#dc2626;color:#fff;box-shadow:0 5px 14px rgba(220,38,38,.22)}
+.rg-exit-btn:active{transform:scale(.98)}
+@media(max-width:430px){
+  .rg-exit-card{padding:20px 14px}
+  .rg-exit-actions{grid-template-columns:1fr}
+  .rg-cancel-btn{order:-1;min-height:60px;font-size:18px}
+  .rg-exit-btn-danger{min-height:50px}
+}
+</style>
+<div id="rgExitModal" aria-hidden="true">
+  <div class="rg-exit-card" role="dialog" aria-modal="true" aria-labelledby="rgExitTitle">
+    <div class="rg-exit-icon">⚠️</div>
+    <div id="rgExitTitle" class="rg-exit-title">TEST હજુ ચાલુ છે!</div>
+    <div id="rgExitText" class="rg-exit-text">શું તમે ખરેખર ટેસ્ટમાંથી બહાર નીકળવા માંગો છો?</div>
+    <div class="rg-exit-actions">
+      <button type="button" id="rgCancelBtn" class="rg-exit-btn rg-cancel-btn">✅ CANCEL — TEST ચાલુ રાખો</button>
+      <button type="button" id="rgExitBtn" class="rg-exit-btn rg-exit-btn-danger">🚪 EXIT TEST</button>
+    </div>
+  </div>
+</div>
+
 <script>
+
+/* =========================================================
+   RG1718 TEST SAFETY — MAXIMUM MOBILE BACK LOCK
+   ========================================================= */
+(function(){
+  let examSafetyActive=false, safetyConfirmBusy=false, exitStage=0, internalHistoryMove=false;
+  const GUARD_COUNT=12;
+
+  function setExamSafety(active){
+    examSafetyActive=!!active;
+    document.body.classList.toggle('exam-active',examSafetyActive);
+  }
+
+  function armMany(){
+    if(!examSafetyActive || internalHistoryMove) return;
+    internalHistoryMove=true;
+    for(let i=0;i<GUARD_COUNT;i++) history.pushState({rg1718Guard:true,n:i},'',location.href);
+    internalHistoryMove=false;
+  }
+
+  function showExitModal(stage){
+    exitStage=stage;
+    const modal=document.getElementById('rgExitModal');
+    const title=document.getElementById('rgExitTitle');
+    const text=document.getElementById('rgExitText');
+    const cancel=document.getElementById('rgCancelBtn');
+    const exit=document.getElementById('rgExitBtn');
+    if(!modal) return;
+    if(stage===1){
+      if(title) title.textContent='⚠️ TEST હજુ ચાલુ છે!';
+      if(text) text.textContent='શું તમે ખરેખર ટેસ્ટમાંથી બહાર નીકળવા માંગો છો?';
+      if(cancel) cancel.textContent='✅ CANCEL — TEST ચાલુ રાખો';
+      if(exit) exit.textContent='🚪 EXIT TEST';
+    }else{
+      if(title) title.textContent='🚨 છેલ્લી ચેતવણી!';
+      if(text) text.textContent='આ test બંધ થશે અને તમારો ચાલુ attempt ગુમાઈ શકે છે. ખરેખર EXIT કરવું છે?';
+      if(cancel) cancel.textContent='🟢 TEST ચાલુ રાખો';
+      if(exit) exit.textContent='🚪 YES, EXIT TEST';
+    }
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden','false');
+  }
+
+  function hideExitModal(){
+    const modal=document.getElementById('rgExitModal');
+    if(modal){
+      modal.classList.remove('show');
+      modal.setAttribute('aria-hidden','true');
+    }
+    safetyConfirmBusy=false;
+    exitStage=0;
+  }
+
+  window.addEventListener('popstate',function(){
+    if(!examSafetyActive || internalHistoryMove) return;
+
+    // Immediately move forward to the guarded entry. The Back action itself
+    // therefore cannot leave the test.
+    internalHistoryMove=true;
+    history.go(1);
+    setTimeout(function(){
+      internalHistoryMove=false;
+      if(examSafetyActive){
+        armMany();
+        if(!safetyConfirmBusy){
+          safetyConfirmBusy=true;
+          showExitModal(1);
+        }
+      }
+    },0);
+  });
+
+  window.addEventListener('beforeunload',function(e){
+    if(!examSafetyActive) return;
+    e.preventDefault();
+    e.returnValue='';
+    return '';
+  });
+
+  function activateSafety(){
+    safetyConfirmBusy=false;
+    exitStage=0;
+    setExamSafety(true);
+    history.replaceState({rg1718ExamBase:true},'',location.href);
+    armMany();
+  }
+
+  function deactivateSafety(){
+    setExamSafety(false);
+    safetyConfirmBusy=false;
+    exitStage=0;
+  }
+
+  function confirmExit(){
+    if(exitStage===1){
+      showExitModal(2);
+      return;
+    }
+    hideExitModal();
+    deactivateSafety();
+    setTimeout(function(){ history.back(); },50);
+  }
+
+  document.addEventListener('click',function(e){
+    if(e.target && e.target.id==='rgCancelBtn'){
+      hideExitModal();
+      armMany();
+    }
+    if(e.target && e.target.id==='rgExitBtn'){
+      confirmExit();
+    }
+  });
+
+  window.RG1718ExamSafety={activate:activateSafety,deactivate:deactivateSafety};
+})();
+
 const PASSWORD = "Rakesh@1803";
 const PASS_MARKS = 90;
 let timer = 120 * 60;
@@ -488,15 +647,7 @@ const sections = [["ભાગ 1", "બાળ વિકાસ અને શિક
 const marksheetNames = ["બાળ વિકાસ અને શિક્ષણશાસ્ત્ર", "ગુજરાતી અને અંગ્રેજી ભાષા", "સામાન્ય જ્ઞાન", "ગણિત – વિષયવસ્તુ", "ગણિત – શિક્ષણશાસ્ત્ર", "વિજ્ઞાન – વિષયવસ્તુ", "વિજ્ઞાન – શિક્ષણશાસ્ત્ર"];
 
 function escapeHTML(s){
-  // Blogger may convert Gujarati Unicode into numeric HTML entities such as &#2751;.
-  // Decode those entities first so Gujarati displays correctly, then safely escape HTML.
-  let text = String(s);
-  try {
-    const decoder = document.createElement("textarea");
-    decoder.innerHTML = text;
-    text = decoder.value;
-  } catch(e) {}
-  return text.replace(/[&<>"']/g, m => ({
+  return String(s).replace(/[&<>"']/g, m => ({
     "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
   }[m]));
 }
@@ -535,6 +686,7 @@ function showHome(){
 }
 
 function initiateTest(){
+  if(window.RG1718ExamSafety) RG1718ExamSafety.activate();
   userName = document.getElementById("nameInput").value.trim();
   userMobile = document.getElementById("mobileInput").value.trim();
   const pass = document.getElementById("passwordInput").value.trim();
